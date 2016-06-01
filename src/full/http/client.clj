@@ -16,9 +16,8 @@
 
 
 ;;; LOGGING
-;;; idea is to log each status to different logger so that some statuses
+;;; Each status is logged via a different logger, so that statuses
 ;;; can be filtered in log config
-
 
 (defn logger [status]
   (-> (str "full.http.client." status)
@@ -38,7 +37,6 @@
 
 
 ;;; REQUEST / RESPONSE HANDLING
-
 
 (defn json-body? [body]
   (and body (map? body)))
@@ -99,7 +97,7 @@
       (= :head (:method opts))
         headers
       (> status 299)
-        res  ; 30x status - return response as os
+        res  ; 30x status - return response as is
       (and (not= status 204)  ; has content
            (.startsWith (:content-type headers "") "application/json"))
         (or (read-json body :json-key-fn json-key-fn) {})
@@ -143,7 +141,7 @@
                       " " (:url req)
                       (if (not-empty (:query-params req))
                         (str "?" (query-string (:query-params req))) ""))
-        result-channel (or out-chan (promise-chan)]
+        result-channel (or out-chan (promise-chan))]
     (log/debug "Request" full-url
                (if-let [body (:body req)] (str "body:" body) "")
                (if-let [headers (:headers req)] (str "headers:" headers) ""))

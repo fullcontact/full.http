@@ -27,7 +27,6 @@
 
 ;; MIDLEWARE
 
-
 (defn- encode-json
   [chunk response]
   (str (if (contains? response :json-key-fn)
@@ -73,13 +72,20 @@
     (fn [request]
       (go-try
         (cond
-          (and (rc/preflight? request) (rc/allow-request? request access-control))
-            (rc/add-access-control request access-control {:status 200 :headers {}})
+          (and (rc/preflight? request)
+               (rc/allow-request? request access-control))
+            (rc/add-access-control request
+                                   access-control
+                                   {:status 200 :headers {}})
           (rc/allow-request? request access-control)
-            (rc/add-access-control request access-control (<? (handler request)))
+            (rc/add-access-control request
+                                   access-control
+                                   (<? (handler request)))
           :else (<? (handler request)))))))
 
-(def default-logger (org.slf4j.LoggerFactory/getLogger "full.http.server.request"))
+
+(def default-logger
+  (org.slf4j.LoggerFactory/getLogger "full.http.server.request"))
 
 (defn response-error-status [ex]
   ; clojure.lang.ExceptionInfo with :status key
@@ -388,7 +394,6 @@
 
 
 ;;; SERVER
-
 
 (defn run-server [handler opts]
   (httpkit/run-server (-> handler
