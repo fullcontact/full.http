@@ -1,6 +1,5 @@
-; Asynchonous HTTP server, based on http-kit and core.async
-
 (ns full.http.server
+  "Asynchonous HTTP server, based on http-kit and core.async"
   (:require [clojure.core.async :refer [go go-loop <!]]
             [ring.util.response :refer [content-type]]
             [compojure.response :as response]
@@ -63,8 +62,8 @@
             resm (if (map? res) res {:body res})]
         (assoc resm
           :body (:body res)
-          :status (or (:status res) 200)
-          :headers (or (:headers res) {}))))))
+          :status (:status res 200)
+          :headers (:headers res {}))))))
 
 (defn wrap-cors>
   [handler & access-control]
@@ -167,11 +166,10 @@
             res (<? (handler> req))
             status (or (:status res)
                        (do
-                         (log/error "Nil status, request:" req
-                                    "response:" res)
+                         (log/error "Nil status, request:" req "response:" res)
                          500))
             req-time (ellapsed-time start-time)
-            mdc (merge (or (:mdc res) {})
+            mdc (merge (:mdc res {})
                        {:method method
                         :uri uri
                         :ua (get-in req [:headers "user-agent"])
@@ -309,7 +307,6 @@
 ;;; COMPOJURE HACKS
 ;;; neccessary to be able to pass response as channel instead of map
 
-
 (extend-protocol response/Renderable
   ReadPort
   (render [ch _] ch))
@@ -326,8 +323,8 @@
           (assoc res :body nil)))
       (handler> req))))
 
-;;; MIDLEWARE GLUE
 
+;;; MIDLEWARE GLUE
 
 (defn json-api
   [routes & {:keys [exception-logger exception-renderer logger]

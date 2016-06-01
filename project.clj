@@ -1,6 +1,6 @@
 (defproject fullcontact/full.http "0.9.1-SNAPSHOT"
   :description "Async HTTP client and server on top of http-kit and core.async."
-  :url "https://github.com/fullcontact/full.monty"
+  :url "https://github.com/fullcontact/full.http"
   :license {:name "Eclipse Public License - v 1.0"
             :url "http://www.eclipse.org/legal/epl-v10.html"
             :distribution :repo}
