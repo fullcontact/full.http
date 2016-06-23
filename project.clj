@@ -14,7 +14,7 @@
                  [fullcontact/full.json "0.10.0"]
                  [fullcontact/full.metrics "0.10.0"]
                  [fullcontact/full.async "0.9.0"]
-                 [fullcontact/full.core "0.10.0"]]
+                 [fullcontact/full.core "0.10.1"]]
   :aot :all
   :release-tasks [["vcs" "assert-committed"]
                   ["change" "version" "leiningen.release/bump-version" "release"]
