@@ -14,7 +14,6 @@ loader):
 http-timeout: 30 # defaults to 30 (http client request timeout in seconds)
 ```
 
-
 ## Client
 
 `full.http.client` extends [http-kit](http://www.http-kit.org/client.html)'s
@@ -46,6 +45,12 @@ HTTP error handling can be done with extra core.async methods provided by
         (log/error "user not found")))))
 ```
 
+### Logging
+
+Responses for each HTTP status are logged in a separate logger, so you can control
+loglevels for them separately. All of the loggers follow the
+`full.http.client.$status` naming pattern.
+
 
 ## Server
 
@@ -53,3 +58,18 @@ A minimal server example [can be found here](https://github.com/fullcontact/full
 
 Everything is the same as you'd expect from a [stock http-kit + compojure](http://www.http-kit.org/server.html#routing) server
 with the addition that you can return channels as well.
+
+
+### Metrics
+
+If you enable [full.metrics](https://github.com/fullcontact/full.metrics), `full.http.server` will report all endpoint
+response times to Riemann. The following Riemann can be used to get 95th
+percentile data on all endpoints (value for `tagged` is whatever you have in
+the `[tags]` array in metrics configuration):
+
+```
+service =~ "endpoint.%/%0.95" and tagged "service-name" and host = nil
+```
+
+Service name for each endpoint follows the `endpoint.$method.$route` naming
+scheme, so it's possible to filter requests by method and/or path.
