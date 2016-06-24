@@ -1,0 +1,55 @@
+# full.http
+
+[![Clojars Project](https://img.shields.io/clojars/v/fullcontact/full.http.svg)](https://clojars.org/fullcontact/full.http)
+
+Async HTTP client and server on top of http-kit and core.async
+
+
+## Configuration
+
+The following configuration options are possible (via [full.core](https://github.com/fullcontact/full.core) config
+loader):
+
+```yaml
+http-timeout: 30 # defaults to 30 (http client request timeout in seconds)
+```
+
+
+## Client
+
+`full.http.client` extends [http-kit](http://www.http-kit.org/client.html)'s
+`httpkit.client/reqest` method and returns the value in a promise channel with
+an optional response parser.
+
+```clojure
+(defn github-userinfo> [username]
+  (full.http.client/req>
+    {:base-url "https://api.github.com"
+     :resource (str "users/" username)}))
+```
+
+Default response parser will transform response fields to `:kebab-cased`
+keywords.
+
+HTTP error handling can be done with extra core.async methods provided by
+[full.async](https://github.com/fullcontact/full.async):
+
+```clojure
+(def github-userinfo> [username]
+  (full.async/go-try
+    (try
+      (<?
+        (full.http.client/req>
+          {:base-url "https://api.github.com"
+           :resource (str "users/" username)}))
+      (catch Exception e
+        (log/error "user not found")))))
+```
+
+
+## Server
+
+A minimal server example [can be found here](https://github.com/fullcontact/full.bootstrap/blob/master/examples/http-service/src/example/api.clj).
+
+Everything is the same as you'd expect from a [stock http-kit + compojure](http://www.http-kit.org/server.html#routing) server
+with the addition that you can return channels as well.
