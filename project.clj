@@ -11,8 +11,8 @@
                  [javax.servlet/servlet-api "2.5"]
                  [ring-cors "0.1.7"]
                  [fullcontact/camelsnake "0.9.0"]
-                 [fullcontact/full.json "0.10.0"]
-                 [fullcontact/full.metrics "0.10.0"]
+                 [fullcontact/full.json "0.10.1"]
+                 [fullcontact/full.metrics "0.10.2"]
                  [fullcontact/full.async "0.9.0"]
                  [fullcontact/full.core "0.10.1"]]
   :aot :all
