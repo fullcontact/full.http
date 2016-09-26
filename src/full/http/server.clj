@@ -280,8 +280,7 @@
         :else
           (do
             (httpkit/send! channel (assoc response :body chunk) false)
-            (recur))
-        ))))
+            (recur))))))
 
 (defn- send-async
   "Private middleware that sends the response asynchronously via http-kit's
