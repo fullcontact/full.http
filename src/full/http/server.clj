@@ -18,7 +18,8 @@
             [full.json :refer [write-json]]
             [full.metrics :as metrics]
             [ring.middleware.cors :as rc]
-            [clojure.core.async :as async])
+            [clojure.core.async :as async]
+            [org.httpkit.server :refer [on-close]])
   (:import (clojure.core.async.impl.protocols ReadPort)
            (clojure.lang ExceptionInfo)
            (org.httpkit HttpStatus)))
@@ -279,29 +280,35 @@
         :else
           (do
             (httpkit/send! channel (assoc response :body chunk) false)
-            (recur))))))
+            (recur))
+        ))))
 
 (defn- send-async
   "Private middleware that sends the response asynchronously via http-kit's
   async support. Must be the last item in middleware stack."
   [handler>]
   (fn [request]
-    (httpkit/with-channel
-      request channel
-      (go
-        (try
-          (if-let [response< (handler> request)]
-            (let [response (<? response<)]
-              (if (instance? ReadPort (:body response))
-                ; streaming response
-                (<? (send-streaming-response response channel))
-                ; basic response - send and close
-                (httpkit/send! channel response true)))
-            ; handler returned nil (some kind of error condition)
-            (httpkit/close channel))
-          (catch Throwable e
-            (log/error e "error sending async response")
-            e))))))
+    ; (:on-close-chan request) can be used in async (typically streaming) reponse handlers
+    ; to react on closed client channel (ie. stop generating the reponse)
+    (let [on-close-chan (async/promise-chan)
+          request (assoc request :on-close-chan on-close-chan)]
+      (httpkit/with-channel
+        request channel
+        (on-close channel (fn [status] (async/put! on-close-chan status)))
+        (go
+          (try
+            (if-let [response< (handler> request)]
+              (let [response (<? response<)]
+                (if (instance? ReadPort (:body response))
+                  ; streaming response
+                  (<? (send-streaming-response response channel))
+                  ; basic response - send and close
+                  (httpkit/send! channel response true)))
+              ; handler returned nil (some kind of error condition)
+              (httpkit/close channel))
+            (catch Throwable e
+              (log/error e "error sending async response")
+              e)))))))
 
 
 ;;; COMPOJURE HACKS
