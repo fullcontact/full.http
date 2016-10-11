@@ -276,7 +276,7 @@
         (instance? Throwable chunk)
           (httpkit/send! channel (json-exception-renderer chunk) true)
         (nil? chunk)
-          (httpkit/close channel)
+          (httpkit/send! channel nil true)
         :else
           (do
             (httpkit/send! channel (assoc response :body chunk) false)
