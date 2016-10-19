@@ -192,9 +192,10 @@
                         :warn (.warn logger message)
                         :error (.error logger message)))
         (metrics/track {:service (str "endpoint." method (:endpoint res))
-                        :tags ["timeit"]
+                        :tags ["timeit" "endpoint"]
                         :metric req-time
                         :uri uri
+                        :status (str status)
                         :state (get metric-states severity)})
         res))))
 
