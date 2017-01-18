@@ -12,7 +12,8 @@
                  [ring-cors "0.1.7"]
                  [fullcontact/camelsnake "0.9.0"]
                  [fullcontact/full.json "0.10.1"]
-                 [fullcontact/full.metrics "0.10.2"]
+                 [fullcontact/full.metrics "0.11.1"
+                  :exclusions [fullcontact/full.core]]
                  [fullcontact/full.async "0.9.0"]
                  [fullcontact/full.core "0.10.1"]]
   :aot :all

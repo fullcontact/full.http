@@ -19,7 +19,8 @@
             [full.metrics :as metrics]
             [ring.middleware.cors :as rc]
             [clojure.core.async :as async]
-            [org.httpkit.server :refer [on-close]])
+            [org.httpkit.server :refer [on-close]]
+            [clojure.string :as str])
   (:import (clojure.core.async.impl.protocols ReadPort)
            (clojure.lang ExceptionInfo)
            (org.httpkit HttpStatus)))
@@ -45,16 +46,16 @@
         (cond-> response
                 ; collection - complete response
                 (coll? body)
-                  (assoc :body (encode-json body response))
+                (assoc :body (encode-json body response))
                 ; channel - streaming response
                 (instance? ReadPort body)
-                  (assoc :body (async/map #(if (coll? %)
-                                            (encode-json % response)
-                                            %)
-                                          [body]))
+                (assoc :body (async/map #(if (coll? %)
+                                           (encode-json % response)
+                                           %)
+                                        [body]))
                 ; add json content-type
                 (not (contains? (:headers response) "Content-Type"))
-                  (content-type (str "application/json; charset=utf-8")))))))
+                (content-type (str "application/json; charset=utf-8")))))))
 
 (defn normalize-response> [handler>]
   (fn [req]
@@ -74,13 +75,13 @@
         (cond
           (and (rc/preflight? request)
                (rc/allow-request? request access-control))
-            (rc/add-access-control request
-                                   access-control
-                                   {:status 200 :headers {}})
+          (rc/add-access-control request
+                                 access-control
+                                 {:status 200 :headers {}})
           (rc/allow-request? request access-control)
-            (rc/add-access-control request
-                                   access-control
-                                   (<? (handler request)))
+          (rc/add-access-control request
+                                 access-control
+                                 (<? (handler request)))
           :else (<? (handler request)))))))
 
 
@@ -155,49 +156,71 @@
 (def metric-states {:ok "ok"
                     :warn "warning"
                     :error "critical"})
-
 (defn log-track-request>
   [handler> & {:keys [logger]
                :or {logger default-logger}}]
-  (fn [req]
-    (go-try
-      (let [start-time (time-bookmark)
-            method (.toUpperCase (name (:request-method req)))
-            uri (str (:uri req) (when-let [q (:query-string req)] (str "?" q)))
-            res (<? (handler> req))
-            status (or (:status res)
-                       (do
-                         (log/error "Nil status, request:" req "response:" res)
-                         500))
-            req-time (ellapsed-time start-time)
-            mdc (merge (:mdc res {})
-                       {:method method
-                        :uri uri
-                        :ua (get-in req [:headers "user-agent"])
-                        :status status
-                        :time (long req-time)
-                        :endpoint (:endpoint res)})
-            severity (cond
-                       (and (>= status 200) (< status 400)) :ok
-                       (and (>= status 400) (< status 500)) :warn
-                       :else :error)
-            message (str status " "
-                         method " "
-                         uri " "
-                         req-time "ms"
-                         (if (= :ok severity) "" (str " " (get res :error))))]
-        (log/with-mdc mdc
-                      (case severity
-                        :ok (.info logger message)
-                        :warn (.warn logger message)
-                        :error (.error logger message)))
-        (metrics/track {:service (str "endpoint." method (:endpoint res))
-                        :tags ["timeit" "endpoint"]
-                        :metric req-time
-                        :uri uri
-                        :status (str status)
-                        :state (get metric-states severity)})
-        res))))
+  (let [request-path-cache (atom {})]
+    (fn [req]
+      (go-try
+        (let [start-time (time-bookmark)
+              method (.toUpperCase (name (:request-method req)))
+              uri (str (:uri req) (when-let [q (:query-string req)] (str "?" q)))
+              res (<? (handler> req))
+              status (or (:status res)
+                         (do
+                           (log/error "Nil status, request:" req "response:" res)
+                           500))
+              req-time (ellapsed-time start-time)
+              mdc (merge (:mdc res {})
+                         {:method method
+                          :uri uri
+                          :ua (get-in req [:headers "user-agent"])
+                          :status status
+                          :time (long req-time)
+                          :endpoint (:endpoint res)})
+              severity (cond
+                         (and (>= status 200) (< status 400)) :ok
+                         (and (>= status 400) (< status 500)) :warn
+                         :else :error)
+              message (str status " "
+                           method " "
+                           uri " "
+                           req-time "ms"
+                           (if (= :ok severity) "" (str " " (get res :error))))]
+          (log/with-mdc mdc
+                        (case severity
+                          :ok (.info logger message)
+                          :warn (.warn logger message)
+                          :error (.error logger message)))
+          (metrics/track {:service (str "endpoint." method (:endpoint res))
+                          :tags ["timeit" "endpoint"]
+                          :metric req-time
+                          :uri uri
+                          :status (str status)
+                          :state (get metric-states severity)})
+          (when (:endpoint res)
+            (let [request-path (or (get @request-path-cache (:endpoint res))
+                                   (some->> (str/split (:endpoint res) #"/")
+                                            (rest)
+                                            (map #(-> (str/replace % #"\{" "")
+                                                      (str/replace #"\}" "")
+                                                      (str/replace #"\[" "")
+                                                      (str/replace #"\]" "")
+                                                      (str/replace #"\+" "")
+                                                      (str/replace #"\-" "_")
+                                                      (str/replace #":" "|")
+                                                      (str (when (.contains % ":")
+                                                             "|"))))
+                                            (str/join "-")
+                                            (str method "-")
+                                            (swap! request-path-cache assoc (:endpoint res))
+                                            (vals)
+                                            (first)))
+                  rk (str "endpointTime." request-path)]
+              (metrics/timeit rk req-time)
+              (metrics/increment rk)
+              (metrics/increment (str "responseStatus." status))))
+          res)))))
 
 (defn wrap-resource>
   [handler> root-path]
@@ -275,13 +298,13 @@
     (let [chunk (<! (:body response))]
       (cond
         (instance? Throwable chunk)
-          (httpkit/send! channel (json-exception-renderer chunk) true)
+        (httpkit/send! channel (json-exception-renderer chunk) true)
         (nil? chunk)
-          (httpkit/send! channel nil true)
+        (httpkit/send! channel nil true)
         :else
-          (do
-            (httpkit/send! channel (assoc response :body chunk) false)
-            (recur))))))
+        (do
+          (httpkit/send! channel (assoc response :body chunk) false)
+          (recur))))))
 
 (defn- send-async
   "Private middleware that sends the response asynchronously via http-kit's
