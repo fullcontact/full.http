@@ -1,4 +1,4 @@
-(defproject fullcontact/full.http "0.10.9-SNAPSHOT"
+(defproject fullcontact/full.http "1.0.0-SNAPSHOT"
   :description "Async HTTP client and server on top of http-kit and core.async."
   :url "https://github.com/fullcontact/full.http"
   :license {:name "Eclipse Public License - v 1.0"
@@ -6,7 +6,7 @@
             :distribution :repo}
   :deploy-repositories [["releases" {:url "https://clojars.org/repo/" :creds :gpg}]]
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [fullcontact/http-kit "2.1.20"]
+                 [http-kit "2.2.0"]
                  [compojure "1.3.4" :exclusions [clj-time]]
                  [javax.servlet/servlet-api "2.5"]
                  [ring-cors "0.1.7"]
