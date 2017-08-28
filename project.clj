@@ -1,4 +1,4 @@
-(defproject fullcontact/full.http "1.0.1-SNAPSHOT"
+(defproject fullcontact/full.http "1.0.1"
   :description "Async HTTP client and server on top of http-kit and core.async."
   :url "https://github.com/fullcontact/full.http"
   :license {:name "Eclipse Public License - v 1.0"
