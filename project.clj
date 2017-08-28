@@ -6,7 +6,7 @@
             :distribution :repo}
   :deploy-repositories [["releases" {:url "https://clojars.org/repo/" :creds :gpg}]]
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [fullcontact/http-kit "2.1.20"]
+                 [fullcontact/http-kit "2.1.21"]
                  [compojure "1.3.4" :exclusions [clj-time]]
                  [javax.servlet/servlet-api "2.5"]
                  [ring-cors "0.1.7"]
