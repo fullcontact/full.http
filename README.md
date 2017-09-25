@@ -34,7 +34,7 @@ HTTP error handling can be done with extra core.async methods provided by
 [full.async](https://github.com/fullcontact/full.async):
 
 ```clojure
-(def github-userinfo> [username]
+(defn github-userinfo> [username]
   (full.async/go-try
     (try
       (<?
