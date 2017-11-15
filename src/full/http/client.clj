@@ -67,27 +67,27 @@
     ex))
 
 (defn- process-response
-  [req full-url result-channel response-parser
+  [req full-url response-parser
    {:keys [opts status headers body error] :as res}]
-  (go
-    (try
-      (->> (if (or error (> status 399))
-             (process-error-response full-url status body error)
-             (let [res (if response-parser
-                         (response-parser res)
-                         res)]
-               (log-debug status
-                          "Response " full-url
+  (try
+    (if (or error (> status 399))
+      (process-error-response full-url status body error)
+      (let [res (if response-parser
+                  (response-parser res)
+                  res)]
+        (log-debug status "Response " full-url
                           "status:" status
                           (when body (str "body:" body))
                           "headers:" headers)
-               res))
-           (>! result-channel))
-      (catch Exception e
-        (log/error e "Error parsing response")
-        (>! result-channel (ex-info (str "Error parsing response: " e)
-                                    {:status 500}
-                                    e))))
+        res))
+    (catch Exception e
+      (log/error e "Error parsing response")
+      (ex-info (str "Error parsing response: " e) {:status 500} e))))
+
+(defn- process-response>
+  [req full-url result-channel response-parser res]
+  (go
+    (>! result-channel (process-response req full-url response-parser res))
     (close! result-channel)))
 
 (defn create-json-response-parser
@@ -145,7 +145,7 @@
     (log/debug "Request" full-url
                (if-let [body (:body req)] (str "body:" body) "")
                (if-let [headers (:headers req)] (str "headers:" headers) ""))
-    (httpkit/request req (partial process-response
+    (httpkit/request req (partial process-response>
                                   req
                                   full-url
                                   result-channel
