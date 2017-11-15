@@ -1,5 +1,5 @@
 (ns full.http.client
-  (:require [clojure.core.async :refer [go chan >! close! promise-chan]]
+  (:require [clojure.core.async :refer [go chan >! close! promise-chan put!]]
             [clojure.string :refer [upper-case]]
             [org.httpkit.client :as httpkit]
             [manifold.deferred :as d]
@@ -55,18 +55,21 @@
     headers))
 
 (defn- process-error-response
-  [full-url status body cause]
-  (let [status (if cause connection-error-status status)
-        body (if cause (str cause) body)
-        message (str "Error requesting " full-url ": "
-                     (if cause
-                       (str "Connection error " (str cause))
-                       (str "HTTP Error " status)))
-        ex (ex-info message {:status status, :body body} cause)]
-    (if (>= status 500)
-      (log-error status message)
-      (log-warn status message))
-    ex))
+  ([full-url ex]
+    (let [d (ex-data ex)]
+      (process-error-response full-url (:status d) (:body d) nil)))
+  ([full-url status body cause]
+    (let [status (if cause connection-error-status status)
+          body (if cause (str cause) body)
+          message (str "Error requesting " full-url ": "
+                       (if cause
+                         (str "Connection error " (str cause))
+                         (str "HTTP Error " status)))
+          ex (ex-info message {:status status, :body body} cause)]
+      (if (>= status 500)
+        (log-error status message)
+        (log-warn status message))
+      ex)))
 
 (defn- process-response
   [req full-url response-parser
@@ -193,4 +196,16 @@
                         :follow-redirects? follow-redirects?
                         :url full-url})
         (d/timeout! (* (or timeout @http-timeout) 1000))
-        (d/chain (partial process-response req-map full-url response-parser)))))
+        (d/chain (partial process-response req-map full-url response-parser))
+        (d/catch Exception #(process-error-response full-url %)))))
+
+(defn aleph-req>
+  "Performs asynchronous API request. Returns channel which contains
+   either respose or throwable with error."
+  [{:keys [out-chan] :as req-map}]
+  (let [result-channel (or out-chan (promise-chan))
+        full-url (aleph-req-uri req-map)]
+    (-> (aleph-req req-map)
+        (d/on-realized #(put! result-channel %)
+                       #(put! result-channel (process-error-response full-url %))))
+    result-channel))
