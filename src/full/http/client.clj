@@ -169,19 +169,11 @@
   (str (or url (str base-url "/" resource))
        (when params "?" (query-string params))))
 
-(defn- aleph-req-body
-  [{:keys [body form-params body-json-key-fn]
-    :or {body-json-key-fn ->camelCase}}]
-  (cond
-    body (request-body body :json-key-fn body-json-key-fn)
-    form-params (query-string form-params)
-    :else nil))
-
 (defn aleph-req
   "Performs asynchronous API request. Returns Manifold deferred which contains
    either respose or throwable with error."
   [{:keys [body method timeout form-params body-json-key-fn response-parser
-           follow-redirects? basic-auth oauth-token headers]
+           form-params follow-redirects? basic-auth oauth-token headers]
     :as req-map
     :or {body-json-key-fn ->camelCase
          response-parser kebab-case-json-response-parser
@@ -191,7 +183,9 @@
     (-> (aleph/request {:request-method method
                         :body (aleph-req-body req-map)
                         :oauth-token oauth-token
+                        :body (request-body body :json-key-fn body-json-key-fn)
                         :basic-auth basic-auth
+                        :form-params form-params
                         :headers (request-headers body headers)
                         :follow-redirects? follow-redirects?
                         :url full-url})
