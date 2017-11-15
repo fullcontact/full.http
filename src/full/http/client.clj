@@ -178,7 +178,7 @@
   "Performs asynchronous API request. Returns Manifold deferred which contains
    either respose or throwable with error."
   [{:keys [body method timeout form-params body-json-key-fn response-parser
-           follow-redirects?]
+           follow-redirects? basic-auth oauth-token headers]
     :as req-map
     :or {body-json-key-fn ->camelCase
          response-parser kebab-case-json-response-parser
@@ -187,6 +187,9 @@
         method (or method (if (json-body? body) :post :get))]
     (-> (aleph/request {:request-method method
                         :body (aleph-req-body req-map)
+                        :oauth-token oauth-token
+                        :basic-auth basic-auth
+                        :headers (request-headers body headers)
                         :follow-redirects? follow-redirects?
                         :url full-url})
         (d/timeout! (* (or timeout @http-timeout) 1000))
