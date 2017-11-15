@@ -10,6 +10,7 @@
                  [compojure "1.3.4" :exclusions [clj-time]]
                  [javax.servlet/servlet-api "2.5"]
                  [ring-cors "0.1.7"]
+                 [aleph "0.4.4"]
                  [fullcontact/camelsnake "0.9.0"]
                  [fullcontact/full.json "0.10.1"]
                  [fullcontact/full.metrics "0.11.4"]

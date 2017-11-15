@@ -2,6 +2,8 @@
   (:require [clojure.core.async :refer [go chan >! close! promise-chan]]
             [clojure.string :refer [upper-case]]
             [org.httpkit.client :as httpkit]
+            [manifold.deferred :as d]
+            [aleph.http :as aleph]
             [camelsnake.core :refer [->camelCase ->kebab-case-keyword]]
             [full.core.sugar :refer :all]
             [full.core.config :refer [opt]]
@@ -100,7 +102,11 @@
         res  ; 30x status - return response as is
       (and (not= status 204)  ; has content
            (.startsWith (:content-type headers "") "application/json"))
-        (or (read-json body :json-key-fn json-key-fn) {})
+        (or (read-json (if (instance? java.io.InputStream body)
+                         (slurp body)
+                         body)
+                       :json-key-fn json-key-fn)
+            {})
       :else
         (or body ""))))
 
@@ -151,3 +157,37 @@
                                   result-channel
                                   response-parser))
     result-channel))
+
+
+;;; Aleph requests
+
+(defn- aleph-req-uri [{:keys [base-url resource url params]}]
+  {:pre [(or url (and base-url resource))]}
+  (str (or url (str base-url "/" resource))
+       (when params "?" (query-string params))))
+
+(defn- aleph-req-body
+  [{:keys [body form-params body-json-key-fn]
+    :or {body-json-key-fn ->camelCase}}]
+  (cond
+    body (request-body body :json-key-fn body-json-key-fn)
+    form-params (query-string form-params)
+    :else nil))
+
+(defn aleph-req
+  "Performs asynchronous API request. Returns Manifold deferred which contains
+   either respose or throwable with error."
+  [{:keys [body method timeout form-params body-json-key-fn response-parser
+           follow-redirects?]
+    :as req-map
+    :or {body-json-key-fn ->camelCase
+         response-parser kebab-case-json-response-parser
+         follow-redirects? true}}]
+  (let [full-url (aleph-req-uri req-map)
+        method (or method (if (json-body? body) :post :get))]
+    (-> (aleph/request {:request-method method
+                        :body (aleph-req-body req-map)
+                        :follow-redirects? follow-redirects?
+                        :url full-url})
+        (d/timeout! (* (or timeout @http-timeout) 1000))
+        (d/chain (partial process-response req-map full-url response-parser)))))
