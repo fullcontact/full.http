@@ -39,7 +39,7 @@
 ;;; REQUEST / RESPONSE HANDLING
 
 (defn json-body? [body]
-  (and body (map? body)))
+  (and body (or (map? body) (sequential? body))))
 
 (defn- request-body
   [body & {:keys [json-key-fn] :or {json-key-fn ->camelCase}}]
