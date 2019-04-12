@@ -139,8 +139,7 @@
         (<? (handler> req))
         (catch Exception ex
           (try
-            (log/with-mdc (:mdc req {})
-              (logger ex))
+            (logger ex)
             (catch Throwable e
               (log/error e "Error logging error")))
           (try
