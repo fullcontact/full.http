@@ -91,18 +91,23 @@
     (close! result-channel)))
 
 (defn create-json-response-parser
-  [json-key-fn]
-  (fn [{:keys [opts status headers body] :as res}]
-    (cond
-      (= :head (:method opts))
-        headers
-      (> status 299)
-        res  ; 30x status - return response as is
-      (and (not= status 204)  ; has content
-           (.startsWith (:content-type headers "") "application/json"))
-        (or (read-json body :json-key-fn json-key-fn) {})
-      :else
-        (or body ""))))
+  ([json-key-fn]
+   (create-json-response-parser json-key-fn []))
+  ([json-key-fn preserve-keys]
+   (fn [{:keys [opts status headers body] :as res}]
+     (cond
+       (= :head (:method opts))
+       headers
+       (> status 299)
+       res  ; 30x status - return response as is
+       (and (not= status 204)  ; has content
+            (.startsWith (:content-type headers "") "application/json"))
+       (or (read-json body
+                      :json-key-fn json-key-fn
+                      :preserve-keys preserve-keys)
+           {})
+       :else
+       (or body "")))))
 
 (def raw-json-response-parser
   (create-json-response-parser identity))
