@@ -59,7 +59,7 @@
         message (str "Error requesting " full-url ": "
                      (if cause
                        (str "Connection error " (str cause))
-                       (str "HTTP Error " status)))
+                       (str "HTTP Error " status ", body: " body)))
         ex (ex-info message {:status status, :body body} cause)]
     (if (>= status 500)
       (log-error status message)
@@ -148,6 +148,7 @@
                         (str "?" (query-string (:query-params req))) ""))
         result-channel (or out-chan (promise-chan))]
     (log/debug "Request" full-url
+               (if-let [form-params (:form-params req)] (str "form-params:" form-params) "")
                (if-let [body (:body req)] (str "body:" body) "")
                (if-let [headers (:headers req)] (str "headers:" headers) ""))
     (httpkit/request req (partial process-response
