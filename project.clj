@@ -8,7 +8,7 @@
   :dependencies [[org.clojure/clojure "1.10.3"]
                  [javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]
                  [org.clojure/core.async "0.7.559"]
-                 [fullcontact/http-kit "2.2.1"]
+                 [http-kit "2.6.0"]
                  [compojure "1.3.4" :exclusions [clj-time]]
                  [javax.servlet/servlet-api "2.5"]
                  [ring-cors "0.1.7"]
