@@ -7,13 +7,22 @@
             [full.core.config :refer [opt]]
             [full.core.log :as log]
             [full.async :refer [go-try]]
-            [full.json :refer [read-json write-json]]))
+            [full.json :refer [read-json write-json]])
+  (:import (javax.net.ssl SSLEngine SSLParameters SNIHostName)
+           (java.net URI)))
 
 
 (def http-timeout (opt :http-timeout :default 30)) ; seconds
 
 (def connection-error-status 503)
 
+(defn sni-configure
+  [^SSLEngine ssl-engine ^URI uri]
+  (let [^SSLParameters ssl-params (.getSSLParameters ssl-engine)]
+    (.setServerNames ssl-params [(SNIHostName. (.getHost uri))])
+    (.setSSLParameters ssl-engine ssl-params)))
+
+(def sni-client (httpkit/make-client {:ssl-configurer sni-configure}))
 
 ;;; LOGGING
 ;;; Each status is logged via a different logger, so that statuses
@@ -123,7 +132,7 @@
   return either response or exception."
   [{:keys [base-url resource url method params body headers basic-auth
            timeout form-params body-json-key-fn response-parser oauth-token
-           follow-redirects? as files out-chan]
+           follow-redirects? as files out-chan sni-client?]
     :or {method (if (json-body? body) :post :get)
          body-json-key-fn ->camelCase
          response-parser kebab-case-json-response-parser
@@ -141,6 +150,7 @@
              :oauth-token oauth-token
              :timeout (* (or timeout @http-timeout) 1000)
              :follow-redirects follow-redirects?
+             :client (if sni-client? sni-client nil)
              :as as}
         full-url (str (upper-case (name method))
                       " " (:url req)
